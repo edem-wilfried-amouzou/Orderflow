@@ -105,8 +105,7 @@ SIMPLE_JWT = {
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-DEFAULT_FROM_EMAIL = "OrderFlow <no-reply@orderflow.tg>"
+
 
 SPECTACULAR_SETTINGS = {"TITLE": "OrderFlow API", "VERSION": "2.0.0"}
 
@@ -120,3 +119,12 @@ FEDAPAY_ENVIRONMENT = os.getenv("FEDAPAY_ENVIRONMENT", "sandbox")
 FEDAPAY_BASE_URL = "https://sandbox-api.fedapay.com/v1" if FEDAPAY_ENVIRONMENT == "sandbox" else "https://api.fedapay.com/v1"
 FEDAPAY_WEBHOOK_SECRET = os.getenv("FEDAPAY_WEBHOOK_SECRET", "")
 FEDAPAY_CALLBACK_URL = os.getenv("FEDAPAY_CALLBACK_URL", "")
+
+# Configuration SMTP (Exemple pour Gmail / SMTP classique)
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
