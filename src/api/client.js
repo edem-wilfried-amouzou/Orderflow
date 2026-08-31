@@ -1,46 +1,67 @@
-// src/api/client.js
-import axios from "axios";
+import axios from 'axios'
 
-const BASE_URL = "http://127.0.0.1:8000/api/v1";
+const client = axios.create({
+  baseURL: import.meta.env.API_URL,
+})
 
-const api = axios.create({ baseURL: BASE_URL });
-
-// Le token d'accès est gardé en mémoire (pas de localStorage), le refresh token en localStorage
-let accessToken = null;
-
-export function setAccessToken(token) {
-  accessToken = token;
-}
-
-api.interceptors.request.use((config) => {
-  if (accessToken) {
-    config.headers.Authorization = `Bearer ${accessToken}`;
+// Avant chaque requête : on colle le token dans l'en-tête Authorization
+client.interceptors.request.use((config) => {
+  const token = localStorage.getItem('access_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
   }
-  return config;
-});
+  return config
+})
 
-// Si le token a expiré (401), on tente un refresh automatique une seule fois
-api.interceptors.response.use(
+// Gestion automatique du rafraîchissement de token
+let refreshEnCours = null
+
+client.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const original = error.config;
-    if (error.response?.status === 401 && !original._retry) {
-      original._retry = true;
-      const refresh = localStorage.getItem("refresh_token");
-      if (refresh) {
-        try {
-          const { data } = await axios.post(`${BASE_URL}/auth/refresh/`, { refresh });
-          setAccessToken(data.access);
-          original.headers.Authorization = `Bearer ${data.access}`;
-          return api(original);
-        } catch (e) {
-          localStorage.removeItem("refresh_token");
-          window.location.href = "/login";
+    const requeteOriginale = error.config
+
+    if (error.response?.status === 401 && !requeteOriginale._retry) {
+      requeteOriginale._retry = true
+      const refreshToken = localStorage.getItem('refresh_token')
+
+      if (!refreshToken) {
+        deconnecterEtRediriger()
+        return Promise.reject(error)
+      }
+
+      try {
+        // On évite de lancer 10 rafraîchissements en parallèle si plusieurs requêtes échouent en même temps
+        if (!refreshEnCours) {
+          refreshEnCours = axios
+            .post(`${import.meta.env.VITE_API_URL}/auth/refresh/`, { refresh: refreshToken })
+            .then((res) => {
+              localStorage.setItem('access_token', res.data.access)
+              return res.data.access
+            })
+            .finally(() => {
+              refreshEnCours = null
+            })
         }
+
+        const nouveauToken = await refreshEnCours
+        requeteOriginale.headers.Authorization = `Bearer ${nouveauToken}`
+        return client(requeteOriginale)
+      } catch (refreshError) {
+        deconnecterEtRediriger()
+        return Promise.reject(refreshError)
       }
     }
-    return Promise.reject(error);
-  }
-);
 
-export default api;
+    return Promise.reject(error)
+  }
+)
+
+function deconnecterEtRediriger() {
+  localStorage.removeItem('access_token')
+  localStorage.removeItem('refresh_token')
+  localStorage.removeItem('role')
+  window.location.href = '/login'
+}
+
+export default client
