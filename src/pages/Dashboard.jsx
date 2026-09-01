@@ -76,7 +76,8 @@ export default function Dashboard() {
           <p className="font-semibold text-slate-900">Dernières commandes enregistrées</p>
           <Link to="/dashboard/commandes" className="text-sm text-brand-blue font-medium">Voir tout</Link>
         </div>
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-[640px]">
           <thead>
             <tr className="text-left text-slate-400 border-t border-slate-100">
               <th className="font-medium px-5 py-2">Numéro</th>
@@ -102,6 +103,7 @@ export default function Dashboard() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

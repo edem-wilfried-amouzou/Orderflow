@@ -1,10 +1,11 @@
 import axios from 'axios'
 
+const API_URL = import.meta.env.VITE_API_URL
+
 const client = axios.create({
-  baseURL: import.meta.env.API_URL,
+  baseURL: API_URL,
 })
 
-// Avant chaque requête : on colle le token dans l'en-tête Authorization
 client.interceptors.request.use((config) => {
   const token = localStorage.getItem('access_token')
   if (token) {
@@ -13,7 +14,6 @@ client.interceptors.request.use((config) => {
   return config
 })
 
-// Gestion automatique du rafraîchissement de token
 let refreshEnCours = null
 
 client.interceptors.response.use(
@@ -31,10 +31,9 @@ client.interceptors.response.use(
       }
 
       try {
-        // On évite de lancer 10 rafraîchissements en parallèle si plusieurs requêtes échouent en même temps
         if (!refreshEnCours) {
           refreshEnCours = axios
-            .post(`${import.meta.env.VITE_API_URL}/auth/refresh/`, { refresh: refreshToken })
+            .post(`${API_URL}/auth/refresh/`, { refresh: refreshToken })
             .then((res) => {
               localStorage.setItem('access_token', res.data.access)
               return res.data.access

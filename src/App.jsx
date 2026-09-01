@@ -2,15 +2,24 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import DashboardLayout from './layouts/DashboardLayout'
+import LivreurLayout from './layouts/LivreurLayout'
 
 import Login from './pages/Login'
 import Register from './pages/Register'
 import Dashboard from './pages/Dashboard'
+import Commandes from './pages/Commandes'
+import CommandeDetail from './pages/CommandeDetail'
+import NouvelleCommande from './pages/NouvelleCommande'
+import Catalogue from './pages/Catalogue'
+import Livraisons from './pages/Livraisons'
+import Notifications from './pages/Notifications'
+import Parametres from './pages/Parametres'
+import Suivi from './pages/Suivi'
 
-// Pages à venir dans le prochain paquet — placeholder temporaire pour ne rien casser
-function EnConstruction({ nom }) {
-  return <div className="p-10 text-slate-400">Page "{nom}" — à venir dans la prochaine étape 🚧</div>
-}
+import LivreurMissions from './pages/LivreurMissions'
+import LivreurMissionDetail from './pages/LivreurMissionDetail'
+import LivreurCarte from './pages/LivreurCarte'
+import LivreurProfil from './pages/LivreurProfil'
 
 export default function App() {
   return (
@@ -19,6 +28,10 @@ export default function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
+
+        {/* Page publique : le client y accède via un lien envoyé par le bot,
+            jamais via une connexion — donc en dehors de tout ProtectedRoute. */}
+        <Route path="/suivi/:numero" element={<Suivi />} />
 
         <Route
           path="/dashboard"
@@ -29,12 +42,27 @@ export default function App() {
           }
         >
           <Route index element={<Dashboard />} />
-          <Route path="commandes" element={<EnConstruction nom="Commandes" />} />
-          <Route path="commandes/nouvelle" element={<EnConstruction nom="Nouvelle commande" />} />
-          <Route path="commandes/:id" element={<EnConstruction nom="Détail commande" />} />
-          <Route path="livraisons" element={<EnConstruction nom="Livraisons" />} />
-          <Route path="notifications" element={<EnConstruction nom="Notifications" />} />
-          <Route path="parametres" element={<EnConstruction nom="Paramètres" />} />
+          <Route path="commandes" element={<Commandes />} />
+          <Route path="commandes/nouvelle" element={<NouvelleCommande />} />
+          <Route path="commandes/:id" element={<CommandeDetail />} />
+          <Route path="catalogue" element={<Catalogue />} />
+          <Route path="livraisons" element={<Livraisons />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="parametres" element={<Parametres />} />
+        </Route>
+
+        <Route
+          path="/livreur"
+          element={
+            <ProtectedRoute roleAutorise="LIVREUR">
+              <LivreurLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<LivreurMissions />} />
+          <Route path="missions/:id" element={<LivreurMissionDetail />} />
+          <Route path="carte" element={<LivreurCarte />} />
+          <Route path="profil" element={<LivreurProfil />} />
         </Route>
 
         <Route path="*" element={<div className="p-10">Page introuvable</div>} />

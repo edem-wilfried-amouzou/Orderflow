@@ -1,10 +1,11 @@
 import { NavLink } from 'react-router-dom'
-import { LayoutDashboard, ShoppingBag, Truck, Bell, Settings, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
+import { LayoutDashboard, ShoppingBag, Package, Truck, Bell, Settings, LogOut } from 'lucide-react'
 
 const liens = [
   { to: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard, fin: true },
   { to: '/dashboard/commandes', label: 'Commandes', icon: ShoppingBag },
+  { to: '/dashboard/catalogue', label: 'Catalogue', icon: Package },
   { to: '/dashboard/livraisons', label: 'Livraisons', icon: Truck },
   { to: '/dashboard/notifications', label: 'Notifications', icon: Bell },
   { to: '/dashboard/parametres', label: 'Paramètres', icon: Settings },
