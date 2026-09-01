@@ -81,7 +81,12 @@ class CommandeCreateSerializer(serializers.Serializer):
             frais_livraison=validated_data["frais_livraison"],
         )
         for ligne in validated_data["lignes"]:
-            LigneCommande.objects.create(commande=commande, **ligne)
+            produit_ref_id = ligne.pop("produit_ref", None)
+            LigneCommande.objects.create(
+                commande=commande,
+                produit_ref_id=produit_ref_id,  # accepte directement l'id, pas besoin de charger l'objet
+                **ligne,
+            )
         HistoriqueCommande.objects.create(commande=commande, statut=commande.statut, commentaire="Commande créée")
         return commande
 

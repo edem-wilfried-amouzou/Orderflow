@@ -1,5 +1,5 @@
 from datetime import timedelta
-from rest_framework import generics, filters
+from rest_framework import generics, filters, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
@@ -32,14 +32,14 @@ class CommandeListCreateView(generics.ListCreateAPIView):
         context["commercant"] = self.request.user.commercant
         return context
 
-    def perform_create(self, serializer):
-        self._commande_creee = serializer.save()
-        notifier_nouvelle_commande(self._commande_creee)
-
     def create(self, request, *args, **kwargs):
-        response = super().create(request, *args, **kwargs)
-        response.data = CommandeDetailSerializer(self._commande_creee).data
-        return response
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        commande = serializer.save()
+        notifier_nouvelle_commande(commande)
+        return Response(CommandeDetailSerializer(commande).data, status=status.HTTP_201_CREATED)
+
 
 
 class CommandeDetailView(generics.RetrieveUpdateAPIView):
