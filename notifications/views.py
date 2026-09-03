@@ -1,15 +1,12 @@
-from django.shortcuts import render
-
-# Create your views here.
-
 from rest_framework import generics
+from rest_framework.views import APIView
+from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from .models import Notification
 from .serializers import NotificationSerializer, PushTokenSerializer
 
 
 class NotificationListView(generics.ListAPIView):
-    """GET /api/v1/notifications/"""
     permission_classes = [IsAuthenticated]
     serializer_class = NotificationSerializer
 
@@ -17,19 +14,24 @@ class NotificationListView(generics.ListAPIView):
         return Notification.objects.filter(destinataire=self.request.user)
 
 
-class NotificationMarquerLuView(generics.UpdateAPIView):
-    """PATCH /api/v1/notifications/{id}/lu/"""
+class NotificationLuView(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = NotificationSerializer
 
-    def get_queryset(self):
-        return Notification.objects.filter(destinataire=self.request.user)
+    def post(self, request, pk):
+        try:
+            notification = Notification.objects.get(pk=pk, destinataire=request.user)
+        except Notification.DoesNotExist:
+            return Response({"erreur": "Notification introuvable."}, status=404)
+        notification.lu = True
+        notification.save()
+        return Response(NotificationSerializer(notification).data)
 
-    def perform_update(self, serializer):
-        serializer.save(lu=True)
 
-
-class PushTokenCreateView(generics.CreateAPIView):
-    """POST /api/v1/notifications/push-token/ — utilisé par l'app mobile"""
+class PushTokenView(APIView):
     permission_classes = [IsAuthenticated]
-    serializer_class = PushTokenSerializer
+
+    def post(self, request):
+        serializer = PushTokenSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(utilisateur=request.user)
+        return Response(serializer.data, status=201)

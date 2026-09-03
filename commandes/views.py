@@ -1,43 +1,49 @@
-from django.shortcuts import render
-
-# Create your views here.
-# commandes/views.py
-from rest_framework import generics, status, filters
+from datetime import timedelta
+from rest_framework import generics, filters, status
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny
 from django_filters.rest_framework import DjangoFilterBackend
+from django.utils import timezone
+from users.permissions import EstCommercant
+from notifications.emails import notifier_nouvelle_commande, envoyer_email_changement_statut
 from .models import Commande, HistoriqueCommande
 from .serializers import (
     CommandeListSerializer, CommandeDetailSerializer, CommandeCreateSerializer,
-    HistoriqueCommandeSerializer,
+    HistoriqueCommandeSerializer, SuiviCommandeSerializer,
 )
-from django.db.models import Sum, Count, Q
-from django.utils import timezone
-from datetime import timedelta
 
 
 class CommandeListCreateView(generics.ListCreateAPIView):
-    """GET/POST /api/v1/commandes/ — Écran 3 (liste) et Écran 5 (création)"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [EstCommercant]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['statut', 'canal']
-    search_fields = ['numero', 'client__nom', 'client__telephone']
-    ordering_fields = ['created_at']
-    ordering = ['-created_at']
+    filterset_fields = ["statut", "canal"]
+    search_fields = ["numero", "client__nom", "client__telephone"]
+    ordering_fields = ["created_at", "updated_at"]
 
     def get_queryset(self):
         return Commande.objects.filter(commercant=self.request.user.commercant)
 
     def get_serializer_class(self):
-        if self.request.method == 'POST':
-            return CommandeCreateSerializer
-        return CommandeListSerializer
+        return CommandeCreateSerializer if self.request.method == "POST" else CommandeListSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context["commercant"] = self.request.user.commercant
+        return context
+
+    def create(self, request, *args, **kwargs):
+        
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        commande = serializer.save()
+        notifier_nouvelle_commande(commande)
+        return Response(CommandeDetailSerializer(commande).data, status=status.HTTP_201_CREATED)
+
 
 
 class CommandeDetailView(generics.RetrieveUpdateAPIView):
-    """GET/PATCH /api/v1/commandes/{id}/ — Écran 4"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [EstCommercant]
     serializer_class = CommandeDetailSerializer
 
     def get_queryset(self):
@@ -45,102 +51,91 @@ class CommandeDetailView(generics.RetrieveUpdateAPIView):
 
 
 class CommandeHistoriqueView(generics.ListAPIView):
-    """GET /api/v1/commandes/{id}/historique/"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [EstCommercant]
     serializer_class = HistoriqueCommandeSerializer
 
     def get_queryset(self):
-        return HistoriqueCommande.objects.filter(
-            commande_id=self.kwargs['pk'],
-            commande__commercant=self.request.user.commercant
-        )
+        return HistoriqueCommande.objects.filter(commande_id=self.kwargs["pk"], commande__commercant=self.request.user.commercant)
 
 
-class CommandeValiderView(APIView):
-    """POST /api/v1/commandes/{id}/valider/"""
-    permission_classes = [IsAuthenticated]
+class ValiderCommandeView(APIView):
+    permission_classes = [EstCommercant]
 
     def post(self, request, pk):
-        commande = self._get_commande(request, pk)
+        try:
+            commande = Commande.objects.get(pk=pk, commercant=request.user.commercant)
+        except Commande.DoesNotExist:
+            return Response({"erreur": "Commande introuvable."}, status=404)
         if commande.statut != Commande.Statut.NOUVELLE:
-            return Response({'erreur': 'Seule une commande NOUVELLE peut être validée.'}, status=400)
-
+            return Response({"erreur": "Seule une commande nouvelle peut être validée."}, status=400)
         commande.statut = Commande.Statut.VALIDEE
         commande.save()
-        HistoriqueCommande.objects.create(commande=commande, statut=commande.statut, commentaire="Commande validée")
+        HistoriqueCommande.objects.create(commande=commande, statut=commande.statut, commentaire="Commande validée par le commerçant")
+        envoyer_email_changement_statut(commande)
         return Response(CommandeDetailSerializer(commande).data)
 
-    def _get_commande(self, request, pk):
-        return Commande.objects.get(pk=pk, commercant=request.user.commercant)
 
-
-class CommandeAnnulerView(APIView):
-    """POST /api/v1/commandes/{id}/annuler/ — Écran 4, bouton Annuler"""
-    permission_classes = [IsAuthenticated]
+class AnnulerCommandeView(APIView):
+    permission_classes = [EstCommercant]
 
     def post(self, request, pk):
-        commande = Commande.objects.get(pk=pk, commercant=request.user.commercant)
+        try:
+            commande = Commande.objects.get(pk=pk, commercant=request.user.commercant)
+        except Commande.DoesNotExist:
+            return Response({"erreur": "Commande introuvable."}, status=404)
+        if commande.statut in (Commande.Statut.LIVREE, Commande.Statut.ANNULEE):
+            return Response({"erreur": "Cette commande ne peut plus être annulée."}, status=400)
         commande.statut = Commande.Statut.ANNULEE
         commande.save()
-        HistoriqueCommande.objects.create(
-            commande=commande, statut=commande.statut,
-            commentaire=request.data.get('raison', 'Commande annulée')
-        )
+        HistoriqueCommande.objects.create(commande=commande, statut=commande.statut, commentaire="Commande annulée par le commerçant")
+        envoyer_email_changement_statut(commande)
         return Response(CommandeDetailSerializer(commande).data)
-
 
 
 class DashboardStatsView(APIView):
-    """GET /api/v1/dashboard/stats/ — Écran 2, les 4 compteurs du haut"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [EstCommercant]
 
     def get(self, request):
-        commercant = request.user.commercant
+        qs = Commande.objects.filter(commercant=request.user.commercant)
         aujourdhui = timezone.now().date()
-        qs = Commande.objects.filter(commercant=commercant, created_at__date=aujourdhui)
-
         return Response({
-            'commandes_du_jour': qs.count(),
-            'en_attente_traitement': qs.filter(statut=Commande.Statut.NOUVELLE).count(),
-            'en_cours_livraison': qs.filter(statut=Commande.Statut.EN_LIVRAISON).count(),
-            'livrees_avec_succes': qs.filter(statut=Commande.Statut.LIVREE).count(),
+            "commandes_du_jour": qs.filter(created_at__date=aujourdhui).count(),
+            "en_attente_traitement": qs.filter(statut=Commande.Statut.NOUVELLE).count(),
+            "en_cours_livraison": qs.filter(statut=Commande.Statut.EN_LIVRAISON).count(),
+            "livrees_avec_succes": qs.filter(statut=Commande.Statut.LIVREE).count(),
         })
 
 
 class DashboardActivite7jView(APIView):
-    """GET /api/v1/dashboard/activite-7j/ — Écran 2, graphique"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [EstCommercant]
 
     def get(self, request):
-        commercant = request.user.commercant
+        qs = Commande.objects.filter(commercant=request.user.commercant)
         aujourdhui = timezone.now().date()
-        resultats = []
-
+        jours_fr = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"]
+        resultat = []
         for i in range(6, -1, -1):
             jour = aujourdhui - timedelta(days=i)
-            count = Commande.objects.filter(commercant=commercant, created_at__date=jour).count()
-            resultats.append({'date': jour.isoformat(), 'jour': jour.strftime('%a'), 'nombre': count})
-
-        return Response(resultats)
+            resultat.append({"date": jour.isoformat(), "jour": jours_fr[jour.weekday()], "nombre": qs.filter(created_at__date=jour).count()})
+        return Response(resultat)
 
 
 class DashboardFinancesView(APIView):
-    """GET /api/v1/dashboard/finances/ — Écran 2, bloc violet"""
-    permission_classes = [IsAuthenticated]
+    permission_classes = [EstCommercant]
 
     def get(self, request):
-        commercant = request.user.commercant
+        qs = Commande.objects.filter(commercant=request.user.commercant)
         aujourdhui = timezone.now().date()
-        commandes_jour = Commande.objects.filter(commercant=commercant, created_at__date=aujourdhui)
+        commandes_livrees_jour = qs.filter(created_at__date=aujourdhui, statut=Commande.Statut.LIVREE)
+        total_collecte = sum((c.montant_total for c in commandes_livrees_jour), 0)
+        total = qs.count()
+        livrees = qs.filter(statut=Commande.Statut.LIVREE).count()
+        taux_livraison = round((livrees / total) * 100, 1) if total else 0
+        return Response({"total_collecte_aujourdhui": total_collecte, "taux_livraison": taux_livraison})
 
-        total_collecte = sum(c.montant_total for c in commandes_jour.filter(statut=Commande.Statut.LIVREE))
 
-        total = commandes_jour.exclude(statut=Commande.Statut.ANNULEE).count()
-        livrees = commandes_jour.filter(statut=Commande.Statut.LIVREE).count()
-        taux_livraison = round((livrees / total * 100), 1) if total > 0 else 0
-
-        return Response({
-            'total_collecte_aujourdhui': total_collecte,
-            'taux_livraison': taux_livraison,
-        })
-    
+class SuiviCommandeView(generics.RetrieveAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = SuiviCommandeSerializer
+    lookup_field = "numero"
+    queryset = Commande.objects.all()

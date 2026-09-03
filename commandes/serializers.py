@@ -1,100 +1,112 @@
-# commandes/serializers.py
 from rest_framework import serializers
-from .models import Commande, LigneCommande, HistoriqueCommande
-from adressage.models import AdresseDigitale
 from users.models import Client
-
-
-class LigneCommandeSerializer(serializers.ModelSerializer):
-    total = serializers.ReadOnlyField()
-
-    class Meta:
-        model = LigneCommande
-        fields = ('id', 'produit', 'quantite', 'prix_unitaire', 'total')
+from .models import AdresseDigitale, Commande, LigneCommande, HistoriqueCommande
 
 
 class AdresseDigitaleSerializer(serializers.ModelSerializer):
     class Meta:
         model = AdresseDigitale
-        fields = ('id', 'quartier', 'indications_reperes', 'photo_repere', 'latitude', 'longitude')
+        fields = ("id", "quartier", "indications_reperes", "photo_repere", "latitude", "longitude")
+        read_only_fields = ("id",)
 
 
-class ClientSerializer(serializers.ModelSerializer):
+class LigneCommandeSerializer(serializers.ModelSerializer):
+    total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+
     class Meta:
-        model = Client
-        fields = ('id', 'nom', 'telephone')
+        model = LigneCommande
+        fields = ("id", "produit_ref", "produit", "quantite", "prix_unitaire", "total")
 
 
 class HistoriqueCommandeSerializer(serializers.ModelSerializer):
     class Meta:
         model = HistoriqueCommande
-        fields = ('id', 'statut', 'commentaire', 'created_at')
+        fields = ("id", "statut", "commentaire", "created_at")
 
 
 class CommandeListSerializer(serializers.ModelSerializer):
-    """Pour l'écran 3 : liste des commandes (version allégée)"""
-    client_nom = serializers.CharField(source='client.nom', read_only=True)
-    client_telephone = serializers.CharField(source='client.telephone', read_only=True)
-    montant_total = serializers.ReadOnlyField()
+    client_nom = serializers.CharField(source="client.nom", read_only=True)
+    montant_total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Commande
-        fields = ('id', 'numero', 'client_nom', 'client_telephone', 'canal', 'statut', 'montant_total', 'created_at')
+        fields = ("id", "numero", "client_nom", "canal", "statut", "mode_paiement", "montant_total", "created_at", "updated_at")
 
 
 class CommandeDetailSerializer(serializers.ModelSerializer):
-    """Pour l'écran 4 : détail complet avec lignes, adresse, historique"""
-    client = ClientSerializer(read_only=True)
     adresse = AdresseDigitaleSerializer(read_only=True)
     lignes = LigneCommandeSerializer(many=True, read_only=True)
-    historique = HistoriqueCommandeSerializer(many=True, read_only=True)
-    montant_total = serializers.ReadOnlyField()
-    livreur_nom = serializers.CharField(source='livreur.utilisateur.get_full_name', read_only=True)
+    client_nom = serializers.CharField(source="client.nom", read_only=True)
+    client_telephone = serializers.CharField(source="client.telephone", read_only=True)
+    montant_total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Commande
-        fields = (
-            'id', 'numero', 'client', 'adresse', 'lignes', 'historique',
-            'canal', 'statut', 'frais_livraison', 'montant_total',
-            'livreur', 'livreur_nom', 'created_at', 'updated_at',
-        )
+        fields = ("id", "numero", "client_nom", "client_telephone", "adresse", "canal", "statut",
+                  "mode_paiement", "frais_livraison", "montant_total", "lignes", "created_at", "updated_at")
 
 
-class CommandeCreateSerializer(serializers.ModelSerializer):
-    """Pour l'écran 5 : création manuelle d'une commande"""
-    client_nom = serializers.CharField(write_only=True)
-    client_telephone = serializers.CharField(write_only=True)
+class LigneCommandeCreateSerializer(serializers.Serializer):
+    produit_ref = serializers.IntegerField(required=False, allow_null=True)
+    produit = serializers.CharField(max_length=150)
+    quantite = serializers.IntegerField(min_value=1, default=1)
+    prix_unitaire = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+
+class CommandeCreateSerializer(serializers.Serializer):
+    client_nom = serializers.CharField(max_length=150)
+    client_telephone = serializers.CharField(max_length=20)
+    canal = serializers.ChoiceField(choices=Commande.Canal.choices, default=Commande.Canal.MANUEL)
+    mode_paiement = serializers.ChoiceField(choices=Commande.ModePaiement.choices, default=Commande.ModePaiement.A_LA_LIVRAISON)
+    frais_livraison = serializers.DecimalField(max_digits=10, decimal_places=2, default=0)
     adresse = AdresseDigitaleSerializer()
-    lignes = LigneCommandeSerializer(many=True)
+    lignes = LigneCommandeCreateSerializer(many=True)
 
-    class Meta:
-        model = Commande
-        fields = ('client_nom', 'client_telephone', 'adresse', 'lignes', 'canal', 'frais_livraison')
+    def validate_lignes(self, value):
+        if not value:
+            raise serializers.ValidationError("Une commande doit contenir au moins une ligne de produit.")
+        return value
 
     def create(self, validated_data):
-        commercant = self.context['request'].user.commercant
-
-        client_nom = validated_data.pop('client_nom')
-        client_telephone = validated_data.pop('client_telephone')
+        commercant = self.context["commercant"]
         client, _ = Client.objects.get_or_create(
-            commercant=commercant, telephone=client_telephone,
-            defaults={'nom': client_nom}
+            commercant=commercant, telephone=validated_data["client_telephone"],
+            defaults={"nom": validated_data["client_nom"]},
         )
-
-        adresse_data = validated_data.pop('adresse')
-        adresse = AdresseDigitale.objects.create(**adresse_data)
-
-        lignes_data = validated_data.pop('lignes')
-
+        adresse_data = validated_data.pop("adresse")
+        adresse = AdresseDigitale.objects.create(client=client, **adresse_data)
         commande = Commande.objects.create(
-            commercant=commercant, client=client, adresse=adresse, **validated_data
+            commercant=commercant, client=client, adresse=adresse,
+            canal=validated_data["canal"], mode_paiement=validated_data["mode_paiement"],
+            frais_livraison=validated_data["frais_livraison"],
         )
-
-        for ligne_data in lignes_data:
-            LigneCommande.objects.create(commande=commande, **ligne_data)
-
-        HistoriqueCommande.objects.create(
-            commande=commande, statut=Commande.Statut.NOUVELLE, commentaire="Commande créée"
-        )
-
+        for ligne in validated_data["lignes"]:
+            produit_ref_id = ligne.pop("produit_ref", None)
+            LigneCommande.objects.create(
+                commande=commande,
+                produit_ref_id=produit_ref_id,  # accepte directement l'id, pas besoin de charger l'objet
+                **ligne,
+            )
+        HistoriqueCommande.objects.create(commande=commande, statut=commande.statut, commentaire="Commande créée")
         return commande
+
+
+class SuiviCommandeSerializer(serializers.ModelSerializer):
+    quartier = serializers.CharField(source="adresse.quartier", read_only=True)
+    livreur_nom = serializers.SerializerMethodField()
+    livreur_telephone = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Commande
+        fields = ("numero", "statut", "quartier", "livreur_nom", "livreur_telephone", "created_at", "updated_at")
+
+    def _livraison(self, obj):
+        return getattr(obj, "livraison", None)
+
+    def get_livreur_nom(self, obj):
+        l = self._livraison(obj)
+        return (l.livreur.utilisateur.get_full_name() or l.livreur.utilisateur.username) if l else None
+
+    def get_livreur_telephone(self, obj):
+        l = self._livraison(obj)
+        return l.livreur.utilisateur.telephone if l else None
