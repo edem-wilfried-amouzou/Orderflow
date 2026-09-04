@@ -1,80 +1,72 @@
-// src/App.jsx
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { AuthProvider } from "./context/AuthContext";
-import ProtectedRoute from "./routes/ProtectedRoute";
+import { Routes, Route, Navigate } from 'react-router-dom'
+import { AuthProvider } from './context/AuthContext'
+import ProtectedRoute from './components/ProtectedRoute'
+import DashboardLayout from './layouts/DashboardLayout'
+import LivreurLayout from './layouts/LivreurLayout'
 
-import Login from "./pages/auth/Login";
-import Register from "./pages/auth/Register";
+import Login from './pages/Login'
+import Register from './pages/Register'
+import Dashboard from './pages/Dashboard'
+import Commandes from './pages/Commandes'
+import CommandeDetail from './pages/CommandeDetail'
+import NouvelleCommande from './pages/NouvelleCommande'
+import Catalogue from './pages/Catalogue'
+import Livraisons from './pages/Livraisons'
+import Notifications from './pages/Notifications'
+import Parametres from './pages/Parametres'
+import Suivi from './pages/Suivi'
 
-import Dashboard from "./pages/dashboard/Dashboard";
-import Commandes from "./pages/dashboard/Commandes";
-import CommandeDetail from "./pages/dashboard/CommandeDetail";
-import NouvelleCommande from "./pages/dashboard/NouvelleCommande";
-import Livraisons from "./pages/dashboard/Livraisons";
-import Notifications from "./pages/dashboard/Notifications";
-import Parametres from "./pages/dashboard/Parametres";
-
-import LivreurLogin from "./pages/livreur/LivreurLogin";
-import Missions from "./pages/livreur/Missions";
-import MissionDetail from "./pages/livreur/MissionDetail";
-import Confirmation from "./pages/livreur/Confirmation";
-import Profil from "./pages/livreur/Profil";
-
-import SuiviCommande from "./pages/public/SuiviCommande";
+import LivreurMissions from './pages/LivreurMissions'
+import LivreurMissionDetail from './pages/LivreurMissionDetail'
+import LivreurCarte from './pages/LivreurCarte'
+import LivreurProfil from './pages/LivreurProfil'
 
 export default function App() {
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <Routes>
-          {/* Auth */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/inscription" element={<Register />} />
-          <Route path="/livreur/login" element={<LivreurLogin />} />
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<Navigate to="/login" replace />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
 
-          {/* Public — suivi client, pas d'authentification */}
-          <Route path="/suivi/:numero" element={<SuiviCommande />} />
+        {/* Page publique : le client y accède via un lien envoyé par le bot,
+            jamais via une connexion — donc en dehors de tout ProtectedRoute. */}
+        <Route path="/suivi/:numero" element={<Suivi />} />
 
-          {/* Commerçant / Admin */}
-          <Route path="/dashboard" element={
-            <ProtectedRoute allowedRoles={["COMMERCANT", "ADMIN"]}><Dashboard /></ProtectedRoute>
-          } />
-          <Route path="/commandes" element={
-            <ProtectedRoute allowedRoles={["COMMERCANT", "ADMIN"]}><Commandes /></ProtectedRoute>
-          } />
-          <Route path="/commandes/nouvelle" element={
-            <ProtectedRoute allowedRoles={["COMMERCANT", "ADMIN"]}><NouvelleCommande /></ProtectedRoute>
-          } />
-          <Route path="/commandes/:id" element={
-            <ProtectedRoute allowedRoles={["COMMERCANT", "ADMIN"]}><CommandeDetail /></ProtectedRoute>
-          } />
-          <Route path="/livraisons" element={
-            <ProtectedRoute allowedRoles={["COMMERCANT", "ADMIN"]}><Livraisons /></ProtectedRoute>
-          } />
-          <Route path="/notifications" element={
-            <ProtectedRoute allowedRoles={["COMMERCANT", "ADMIN", "LIVREUR"]}><Notifications /></ProtectedRoute>
-          } />
-          <Route path="/parametres" element={
-            <ProtectedRoute allowedRoles={["COMMERCANT", "ADMIN"]}><Parametres /></ProtectedRoute>
-          } />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute roleAutorise="COMMERCANT">
+              <DashboardLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<Dashboard />} />
+          <Route path="commandes" element={<Commandes />} />
+          <Route path="commandes/nouvelle" element={<NouvelleCommande />} />
+          <Route path="commandes/:id" element={<CommandeDetail />} />
+          <Route path="catalogue" element={<Catalogue />} />
+          <Route path="livraisons" element={<Livraisons />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="parametres" element={<Parametres />} />
+        </Route>
 
-          {/* Livreur */}
-          <Route path="/livreur/missions" element={
-            <ProtectedRoute allowedRoles={["LIVREUR"]}><Missions /></ProtectedRoute>
-          } />
-          <Route path="/livreur/missions/:id" element={
-            <ProtectedRoute allowedRoles={["LIVREUR"]}><MissionDetail /></ProtectedRoute>
-          } />
-          <Route path="/livreur/missions/:id/confirmer" element={
-            <ProtectedRoute allowedRoles={["LIVREUR"]}><Confirmation /></ProtectedRoute>
-          } />
-          <Route path="/livreur/profil" element={
-            <ProtectedRoute allowedRoles={["LIVREUR"]}><Profil /></ProtectedRoute>
-          } />
+        <Route
+          path="/livreur"
+          element={
+            <ProtectedRoute roleAutorise="LIVREUR">
+              <LivreurLayout />
+            </ProtectedRoute>
+          }
+        >
+          <Route index element={<LivreurMissions />} />
+          <Route path="missions/:id" element={<LivreurMissionDetail />} />
+          <Route path="carte" element={<LivreurCarte />} />
+          <Route path="profil" element={<LivreurProfil />} />
+        </Route>
 
-          <Route path="*" element={<Navigate to="/login" replace />} />
-        </Routes>
-      </AuthProvider>
-    </BrowserRouter>
-  );
+        <Route path="*" element={<div className="p-10">Page introuvable</div>} />
+      </Routes>
+    </AuthProvider>
+  )
 }
