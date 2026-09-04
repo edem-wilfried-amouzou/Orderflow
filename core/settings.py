@@ -165,3 +165,8 @@ STORAGES = {
 
 # URL d'accès aux fichiers média
 MEDIA_URL = f"{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/"
+
+META_APP_ID = os.getenv("META_APP_ID")
+META_APP_SECRET = os.getenv("META_APP_SECRET")
+META_VERIFY_TOKEN = os.getenv("META_VERIFY_TOKEN")
+FRONTEND_URL = os.getenv("FRONTEND_URL")
