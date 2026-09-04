@@ -2,13 +2,14 @@ import os
 from pathlib import Path
 from datetime import timedelta
 from dotenv import load_dotenv
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR / ".env")
 
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-a-changer")
-DEBUG = os.getenv("DEBUG", "True") == "True"
-ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
+SECRET_KEY = os.getenv("SECRET_KEY")
+DEBUG = os.getenv("DEBUG") == "True"
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS").split(",")
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -34,6 +35,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
@@ -43,6 +45,11 @@ MIDDLEWARE = [
 ]
 
 ROOT_URLCONF = "core.urls"
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', '*').split(',')
+
+STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 TEMPLATES = [{
     "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -57,15 +64,18 @@ TEMPLATES = [{
 
 WSGI_APPLICATION = "core.wsgi.application"
 
-if os.getenv("DB_NAME"):
-    DATABASES = {"default": {
-        "ENGINE": "django.db.backends.postgresql",
-        "NAME": os.getenv("DB_NAME"), "USER": os.getenv("DB_USER"),
-        "PASSWORD": os.getenv("DB_PASSWORD"), "HOST": os.getenv("DB_HOST", "localhost"),
-        "PORT": os.getenv("DB_PORT", "5432"),
-    }}
+if os.getenv("DATABASE_URL"):
+
+    DATABASES = {
+        'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL'),
+        conn_max_age=600,
+        ssl_require=True
+        )
+    }   
 else:
-    DATABASES = {"default": {
+    DATABASES = {
+        "default": {
         "ENGINE": "django.db.backends.sqlite3", 
         "NAME": BASE_DIR / "db.sqlite3"
         }
@@ -128,3 +138,35 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
 DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER)
+
+
+AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID')
+AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY')
+AWS_STORAGE_BUCKET_NAME = os.getenv('S3_BUCKET')
+AWS_S3_REGION_NAME = os.getenv('AWS_REGION', 'us-east-2')
+
+# Endpoint personnalisé obligatoire pour Neon Object Storage
+AWS_S3_ENDPOINT_URL = os.getenv('AWS_ENDPOINT_URL_S3')
+
+# Paramètres de sécurité & compatibilité
+AWS_QUERYSTRING_AUTH = False       # Désactive la signature temporaire dans les URLs si le bucket est public
+AWS_S3_SIGNATURE_VERSION = 's3v4'  # Utilise la signature V4 requise par Neon/S3
+AWS_S3_CHECKSUM_ALGORITHM = None   # Évite les conflits de validation MD5/Checksum sur certains endpoints S3 compatibles
+
+# Définition du backend de stockage
+STORAGES = {
+    "default": {
+        "BACKEND": "custom_storages.MediaStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
+
+# URL d'accès aux fichiers média
+MEDIA_URL = f"{AWS_S3_ENDPOINT_URL}/{AWS_STORAGE_BUCKET_NAME}/"
+
+META_APP_ID = os.getenv("META_APP_ID")
+META_APP_SECRET = os.getenv("META_APP_SECRET")
+META_VERIFY_TOKEN = os.getenv("META_VERIFY_TOKEN")
+FRONTEND_URL = os.getenv("FRONTEND_URL")
