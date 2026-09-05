@@ -91,6 +91,21 @@ class AnnulerCommandeView(APIView):
         envoyer_email_changement_statut(commande)
         return Response(CommandeDetailSerializer(commande).data)
 
+class MarquerLivreeCommandeView(APIView):
+    permission_classes = [EstCommercant]
+
+    def post(self, request, pk):
+        try:
+            commande = Commande.objects.get(pk=pk, commercant=request.user.commercant)
+        except Commande.DoesNotExist:
+            return Response({"erreur": "Commande introuvable."}, status=404)
+        if commande.statut in (Commande.Statut.LIVREE, Commande.Statut.ANNULEE):
+            return Response({"erreur": "Cette commande ne peut plus être marquée comme livrée."}, status=400)
+        commande.statut = Commande.Statut.LIVREE
+        commande.save()
+        HistoriqueCommande.objects.create(commande=commande, statut=commande.statut, commentaire="Commande marquée comme livrée par le commerçant")
+        envoyer_email_changement_statut(commande)
+        return Response(CommandeDetailSerializer(commande).data)
 
 class DashboardStatsView(APIView):
     permission_classes = [EstCommercant]
@@ -139,3 +154,4 @@ class SuiviCommandeView(generics.RetrieveAPIView):
     serializer_class = SuiviCommandeSerializer
     lookup_field = "numero"
     queryset = Commande.objects.all()
+

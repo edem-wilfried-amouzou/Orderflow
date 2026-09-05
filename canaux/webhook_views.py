@@ -37,6 +37,5 @@ class GreenApiWebhookView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        print("GREEN API PAYLOAD:", json.dumps(request.data))  # ligne temporaire de debug
         traiter_message_greenapi(request.data)
         return Response(status=200)

@@ -29,11 +29,13 @@ class CanalConnecte(models.Model):
 class Conversation(models.Model):
     class Etat(models.TextChoices):
         DEBUT = "DEBUT", "Début"
-        CATALOGUE_ENVOYE = "CATALOGUE_ENVOYE", "Catalogue envoyé"
-        PANIER_EN_COURS = "PANIER_EN_COURS", "Panier en cours"
-        EN_ATTENTE_ADRESSE = "EN_ATTENTE_ADRESSE", "En attente d'adresse"
+        MENU = "MENU", "Menu principal"
+        CATALOGUE = "CATALOGUE", "Catalogue affiché"
+        CATALOGUE_ENVOYE = "CATALOGUE_ENVOYE", "Catalogue envoyé"        # conservé, inutilisé
+        PANIER_EN_COURS = "PANIER_EN_COURS", "Panier en cours"            # conservé, inutilisé
+        EN_ATTENTE_ADRESSE = "EN_ATTENTE_ADRESSE", "En attente d'adresse" # conservé, inutilisé
         COMMANDE_CREEE = "COMMANDE_CREEE", "Commande créée"
-
+        
     commercant = models.ForeignKey("users.Commercant", on_delete=models.CASCADE, related_name="conversations")
     canal = models.ForeignKey(CanalConnecte, on_delete=models.CASCADE, related_name="conversations")
     client_identifiant_externe = models.CharField(max_length=255)
