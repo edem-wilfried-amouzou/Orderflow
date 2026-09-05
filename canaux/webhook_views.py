@@ -1,3 +1,4 @@
+from django.http import HttpResponse, HttpResponseForbidden
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
@@ -12,8 +13,9 @@ class MetaWebhookView(APIView):
     def get(self, request):
         if (request.GET.get("hub.mode") == "subscribe"
                 and request.GET.get("hub.verify_token") == settings.META_VERIFY_TOKEN):
-            return Response(int(request.GET.get("hub.challenge")))
-        return Response(status=403)
+            challenge = request.GET.get("hub.challenge", "")
+            return HttpResponse(challenge, content_type="text/plain")
+        return HttpResponseForbidden()
 
     def post(self, request):
         payload = request.data
