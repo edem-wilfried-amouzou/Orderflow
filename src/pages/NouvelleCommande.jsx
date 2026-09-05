@@ -26,8 +26,7 @@ export default function NouvelleCommande() {
   const [canal, setCanal] = useState('MANUEL')
   const [modePaiement, setModePaiement] = useState('A_LA_LIVRAISON')
   const [fraisLivraison, setFraisLivraison] = useState(1000)
-  const [quartier, setQuartier] = useState('')
-  const [indications, setIndications] = useState('')
+  
   const [lignes, setLignes] = useState([{ ...LIGNE_VIDE }])
 
   useEffect(() => {
@@ -69,7 +68,7 @@ export default function NouvelleCommande() {
         canal,
         mode_paiement: modePaiement,
         frais_livraison: fraisLivraison,
-        adresse: { quartier, indications_reperes: indications },
+        adresse: { quartier: 'Non renseigné' },
         lignes: lignes
           .filter((l) => l.produit && l.quantite > 0)
           .map((l) => ({
@@ -157,15 +156,13 @@ export default function NouvelleCommande() {
 
         <div className="space-y-6">
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4">
-            <p className="font-semibold text-slate-900">Adresse & Livraison à Lomé</p>
-            <input required placeholder="Quartier de livraison" value={quartier} onChange={(e) => setQuartier(e.target.value)} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm" />
-            <textarea placeholder="Indications géographiques & repères" value={indications} onChange={(e) => setIndications(e.target.value)} rows={3} className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm" />
+            <p className="font-semibold text-slate-900">Frais additionnels</p>
             <div>
-              <label className="text-sm text-slate-600">Frais de livraison</label>
+              <label className="text-sm text-slate-600">Frais de livraison (optionnel)</label>
               <input type="number" min={0} value={fraisLivraison} onChange={(e) => setFraisLivraison(e.target.value)} className="w-full mt-1 px-4 py-2.5 rounded-xl border border-slate-200 text-sm" />
             </div>
           </div>
-
+          
           <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-slate-600">Total général</p>

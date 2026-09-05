@@ -14,12 +14,8 @@ export default function DashboardLayout() {
         {/* Barre visible uniquement sur mobile/tablette (lg:hidden) : logo + bouton menu.
             Sur desktop, la Sidebar fixe suffit, donc cette barre disparaît. */}
         <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3">
-          <button onClick={() => setMenuOuvert(true)} className="text-slate-600">
-            <Menu size={22} />
-          </button>
           <div className="flex items-center gap-2">
-            <div className="w-6 h-6 rounded-full gradient-brand" />
-            <span className="font-bold text-slate-900 text-sm tracking-wide">ORDERFLOW</span>
+            <img src="/logo.png" alt="OrderFlow" className="h-6 w-auto" />
           </div>
         </div>
 

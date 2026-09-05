@@ -16,7 +16,7 @@ export default function ProtectedRoute({ children, roleAutorise }) {
   if (!user) return <Navigate to="/login" replace />
 
   if (roleAutorise && user.role !== roleAutorise) {
-    return <Navigate to={user.role === 'LIVREUR' ? '/livreur' : '/dashboard'} replace />
+    return <Navigate to="/dashboard" replace />
   }
 
   return children
