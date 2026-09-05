@@ -5,7 +5,7 @@ from rest_framework.permissions import AllowAny
 from django.conf import settings
 from .models import CanalConnecte
 from .bot import traiter_message_entrant, traiter_message_greenapi
-
+import json
 
 class MetaWebhookView(APIView):
     permission_classes = [AllowAny]
@@ -37,5 +37,6 @@ class GreenApiWebhookView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
+        print("GREEN API PAYLOAD:", json.dumps(request.data))  # ligne temporaire de debug
         traiter_message_greenapi(request.data)
         return Response(status=200)
