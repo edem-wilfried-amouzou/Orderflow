@@ -1,5 +1,6 @@
 from decimal import Decimal
 from django.conf import settings
+from django.db import IntegrityError
 from .models import CanalConnecte, Conversation, PanierItem
 from catalogue.models import Produit
 from users.models import Client
@@ -9,6 +10,7 @@ from .envoi import envoyer_message
 
 
 def extraire_identifiant_et_texte(type_canal, entree):
+    """Format Meta (WhatsApp Cloud API / Messenger / Instagram)."""
     if type_canal == CanalConnecte.Type.WHATSAPP:
         try:
             value = entree["changes"][0]["value"]
@@ -28,6 +30,7 @@ def extraire_identifiant_et_texte(type_canal, entree):
 
 
 def traiter_message_entrant(type_canal, entree):
+    """Point d'entrée pour les webhooks Meta (WhatsApp officiel, Facebook, Instagram)."""
     identifiant_page, identifiant_client, texte = extraire_identifiant_et_texte(type_canal, entree)
     if not texte:
         return
@@ -44,7 +47,7 @@ def traiter_message_entrant(type_canal, entree):
 
 
 def traiter_message_greenapi(payload):
-    """Format standard Green API (typeWebhook='incomingMessageReceived')."""
+    """Point d'entrée pour les webhooks Green API (WhatsApp non-officiel via QR code)."""
     if payload.get("typeWebhook") != "incomingMessageReceived":
         return
 
@@ -79,6 +82,8 @@ def _dispatch(canal, identifiant_client, texte):
     )
     gestionnaires = {
         Conversation.Etat.DEBUT: gerer_debut,
+        Conversation.Etat.EN_ATTENTE_NOM: gerer_nom,
+        Conversation.Etat.EN_ATTENTE_CONTACT: gerer_contact,
         Conversation.Etat.MENU: gerer_menu,
         Conversation.Etat.CATALOGUE: gerer_catalogue,
         Conversation.Etat.COMMANDE_CREEE: gerer_debut,
@@ -109,13 +114,67 @@ def _texte_panier(conversation):
     return f"Votre panier :\n{lignes}\n\nTotal : {total} FCFA\n\nTapez 'confirmer' pour valider la commande, ou 0 pour revenir au menu."
 
 
-# --- États ---
+# --- États : identification du client (nom + contact, jamais d'adresse) ---
 
 def gerer_debut(conversation, texte):
-    envoyer_message(conversation, f"Bienvenue chez {conversation.commercant.nom_boutique} !\n\n{_texte_menu()}")
-    conversation.etat = Conversation.Etat.MENU
+    # Client déjà identifié (nom + contact renseignés lors d'une commande précédente sur ce numéro) :
+    # on ne redemande rien, on va direct au menu.
+    if conversation.client and conversation.client.nom:
+        envoyer_message(conversation, f"Ravi de vous revoir {conversation.client.nom} !\n\n{_texte_menu()}")
+        conversation.etat = Conversation.Etat.MENU
+        conversation.save()
+        return
+
+    envoyer_message(conversation, f"Bienvenue chez {conversation.commercant.nom_boutique} ! Quel est votre nom ?")
+    conversation.etat = Conversation.Etat.EN_ATTENTE_NOM
     conversation.save()
 
+
+def gerer_nom(conversation, texte):
+    nom = texte.strip()
+    if not nom:
+        envoyer_message(conversation, "Merci d'indiquer votre nom pour continuer.")
+        return
+
+    client, _ = Client.objects.get_or_create(
+        commercant=conversation.commercant,
+        telephone=conversation.client_identifiant_externe,  # numéro WhatsApp par défaut, ajusté à l'étape suivante
+        defaults={"nom": nom},
+    )
+    if client.nom != nom:
+        client.nom = nom
+        client.save()
+
+    conversation.client = client
+    conversation.etat = Conversation.Etat.EN_ATTENTE_CONTACT
+    conversation.save()
+    envoyer_message(conversation, "Merci ! Quel est votre numéro de contact ?")
+
+
+def gerer_contact(conversation, texte):
+    contact = texte.strip()
+    if not contact:
+        envoyer_message(conversation, "Merci d'indiquer un numéro de contact pour continuer.")
+        return
+
+    client = conversation.client
+    ancien_telephone = client.telephone
+    client.telephone = contact
+    try:
+        client.save()
+    except IntegrityError:
+        # Un autre client de ce commerçant utilise déjà ce numéro comme contact.
+        client.telephone = ancien_telephone
+        client.save()
+        envoyer_message(conversation, "Ce numéro semble déjà utilisé. Merci d'indiquer un autre numéro de contact.")
+        return
+
+    conversation.etat = Conversation.Etat.MENU
+    conversation.save()
+    envoyer_message(conversation, f"Merci {client.nom} !\n\n{_texte_menu()}")
+
+
+# --- États : menu, catalogue, panier ---
 
 def gerer_menu(conversation, texte):
     choix = texte.strip().lower()
@@ -172,17 +231,13 @@ def gerer_catalogue(conversation, texte):
     envoyer_message(conversation, f"{produit.nom} ajouté au panier.\n\n{message}")
 
 
-def creer_commande_depuis_panier(conversation):
-    client, _ = Client.objects.get_or_create(
-        commercant=conversation.commercant,
-        telephone=conversation.client_identifiant_externe,
-        defaults={"nom": "Client " + conversation.canal.get_type_display()},
-    )
-    conversation.client = client
-    conversation.save()
+# --- Création de la commande ---
 
-    # AdresseDigitale reste obligatoire au niveau du modèle Commande : on met un placeholder,
-    # le parcours livraison n'étant plus utilisé pour l'instant.
+def creer_commande_depuis_panier(conversation):
+    client = conversation.client  # nom + contact déjà capturés via gerer_nom / gerer_contact
+
+    # AdresseDigitale reste obligatoire au niveau du modèle Commande : placeholder,
+    # le parcours livraison n'étant plus utilisé pour l'instant. Jamais demandé au client.
     adresse = AdresseDigitale.objects.create(client=client, quartier="Non renseigné")
 
     commande = Commande.objects.create(
