@@ -137,3 +137,37 @@ def gerer_adresse(conversation, texte):
         f"Merci ! Votre commande {commande.numero} est enregistrée (paiement à la livraison).\n"
         f"Suivez-la ici : {settings.FRONTEND_URL}/suivi/{commande.numero}",
     )
+
+def traiter_message_greenapi(payload):
+    """⚠️ Format basé sur la structure standard Green API (typeWebhook='incomingMessageReceived') —
+    à vérifier avec ton premier test réel, ajuste si la structure diffère légèrement."""
+    if payload.get("typeWebhook") != "incomingMessageReceived":
+        return
+
+    try:
+        expediteur = payload["senderData"]["chatId"].replace("@c.us", "")
+        texte = payload["messageData"]["textMessageData"]["textMessage"]
+    except KeyError:
+        return
+
+    try:
+        canal = CanalConnecte.objects.get(
+            type=CanalConnecte.Type.WHATSAPP,
+            statut_connexion=CanalConnecte.StatutConnexion.CONNECTE,
+        )
+    except CanalConnecte.DoesNotExist:
+        return
+
+    conversation, _ = Conversation.objects.get_or_create(
+        canal=canal, client_identifiant_externe=expediteur,
+        defaults={"commercant": canal.commercant},
+    )
+
+    gestionnaires = {
+        Conversation.Etat.DEBUT: gerer_debut,
+        Conversation.Etat.CATALOGUE_ENVOYE: gerer_choix_produit,
+        Conversation.Etat.PANIER_EN_COURS: gerer_choix_produit,
+        Conversation.Etat.EN_ATTENTE_ADRESSE: gerer_adresse,
+        Conversation.Etat.COMMANDE_CREEE: gerer_debut,
+    }
+    gestionnaires[conversation.etat](conversation, texte)

@@ -4,7 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 from django.conf import settings
 from .models import CanalConnecte
-from .bot import traiter_message_entrant
+from .bot import traiter_message_entrant, traiter_message_greenapi
 
 
 class MetaWebhookView(APIView):
@@ -31,4 +31,11 @@ class MetaWebhookView(APIView):
             for entree in payload.get("entry", []):
                 traiter_message_entrant(type_canal, entree)
 
+        return Response(status=200)
+
+class GreenApiWebhookView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        traiter_message_greenapi(request.data)
         return Response(status=200)
