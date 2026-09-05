@@ -43,7 +43,9 @@ export default function Suivi() {
   return (
     <div className="min-h-screen bg-slate-50 max-w-md mx-auto px-4 py-8">
       <div className="flex flex-col items-center mb-6">
-        <div className="w-10 h-10 rounded-full gradient-brand mb-3" />
+        <div className="flex justify-center mb-5">
+          <img src="/logo.png" alt="OrderFlow" className="h-11 w-auto" />
+        </div>
         <h1 className="text-lg font-bold text-slate-900">Suivi de Commande</h1>
         <span className="mt-2 bg-violet-100 text-brand-purple text-xs font-semibold px-3 py-1 rounded-full">
           {suivi.numero}
