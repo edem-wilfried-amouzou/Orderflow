@@ -12,6 +12,7 @@ def envoyer_message(conversation, texte):
 
 
 def _envoyer_whatsapp(canal, destinataire, texte):
+    print(f"DEBUG token_acces={canal.token_acces!r}")  # ligne temporaire
     if canal.token_acces.startswith("GREENAPI:"):
         _envoyer_whatsapp_greenapi(canal, destinataire, texte)
     elif canal.token_acces.startswith("TWILIO:"):
@@ -21,13 +22,14 @@ def _envoyer_whatsapp(canal, destinataire, texte):
 
 
 def _envoyer_whatsapp_greenapi(canal, destinataire, texte):
-    # identifiant_externe = idInstance, token_acces = "GREENAPI:{apiTokenInstance}"
+    #def identifiant_externe = idInstance, token_acces = "GREENAPI:{apiTokenInstance}"
     _, api_token = canal.token_acces.split(":", 1)
     url = f"https://api.green-api.com/waInstance{canal.identifiant_externe}/sendMessage/{api_token}"
-    requests.post(url, json={
+    response = requests.post(url, json={
         "chatId": f"{destinataire}@c.us",
         "message": texte,
     })
+    print(f"DEBUG Green API envoi -> status={response.status_code} body={response.text}")  # ligne temporaire
 
 
 def _envoyer_whatsapp_meta(canal, destinataire, texte):
