@@ -139,7 +139,7 @@ def gerer_adresse(conversation, texte):
     )
 
 def traiter_message_greenapi(payload):
-    """⚠️ Format basé sur la structure standard Green API (typeWebhook='incomingMessageReceived') —
+    """ Format basé sur la structure standard Green API (typeWebhook='incomingMessageReceived') —
     à vérifier avec ton premier test réel, ajuste si la structure diffère légèrement."""
     if payload.get("typeWebhook") != "incomingMessageReceived":
         return
@@ -148,6 +148,21 @@ def traiter_message_greenapi(payload):
         expediteur = payload["senderData"]["chatId"].replace("@c.us", "")
         texte = payload["messageData"]["textMessageData"]["textMessage"]
     except KeyError:
+        return
+
+    print(f"DEBUG expediteur={expediteur} texte={texte}")  # ligne temporaire
+
+    try:
+        canal = CanalConnecte.objects.get(
+            type=CanalConnecte.Type.WHATSAPP,
+            statut_connexion=CanalConnecte.StatutConnexion.CONNECTE,
+        )
+        print(f"DEBUG canal trouvé : {canal.id} - {canal.commercant}")  # ligne temporaire
+    except CanalConnecte.DoesNotExist:
+        print("DEBUG aucun CanalConnecte WHATSAPP/CONNECTE trouvé")  # ligne temporaire
+        return
+    except CanalConnecte.MultipleObjectsReturned:
+        print("DEBUG plusieurs CanalConnecte WHATSAPP/CONNECTE trouvés — ambigu")  # ligne temporaire
         return
 
     try:
