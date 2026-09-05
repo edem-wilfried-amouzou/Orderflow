@@ -8,8 +8,7 @@ import { Phone, MapPin } from 'lucide-react'
 const ETAPES = [
   { statut: 'NOUVELLE', label: 'Commande reçue', desc: (s) => 'Traitement en cours' },
   { statut: 'VALIDEE', label: 'Validée', desc: () => 'Prête pour expédition' },
-  { statut: 'ASSIGNEE', label: 'Livreur assigné', desc: (s) => s.livreur_nom ? `Attribué à ${s.livreur_nom}` : 'En attente d’un livreur' },
-  { statut: 'EN_LIVRAISON', label: 'En livraison', desc: (s) => s.livreur_nom ? `${s.livreur_nom} est en route` : 'Livreur en route' },
+  
   { statut: 'LIVREE', label: 'Livrée', desc: () => 'Confirmation à l’arrivée' },
 ]
 
