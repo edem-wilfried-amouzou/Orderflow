@@ -40,7 +40,7 @@ export default function Dashboard() {
     <div>
       <Topbar title="Tableau de bord" sousTitre="Lomé, Togo" />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-2 gap-4 mb-6">
         <StatCard label="Commandes du jour" value={stats?.commandes_du_jour ?? 0} />
         <StatCard label="En attente traitement" value={stats?.en_attente_traitement ?? 0} hintColor="text-amber-600" hint="À traiter" />
       </div>
