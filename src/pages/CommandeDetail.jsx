@@ -1,131 +1,169 @@
 import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import Topbar from '../components/Topbar'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import Badge from '../components/Badge'
 import Spinner from '../components/Spinner'
-import { listerCommandes } from '../api/commandes'
+import { getCommande, getHistoriqueCommande, validerCommande, annulerCommande, marquerLivree } from '../api/commandes'
 import { formaterFCFA, formaterDate } from '../utils/format'
 import { STATUT_COMMANDE, CANAL_CONFIG } from '../utils/statusConfig'
+import { ArrowLeft, MapPin } from 'lucide-react'
 
-const STATUTS = Object.keys(STATUT_COMMANDE)
-const CANAUX = Object.keys(CANAL_CONFIG)
-const PAR_PAGE = 20 // doit correspondre à la pagination DRF côté backend
+const STATUTS_TERMINAUX = ['LIVREE', 'ANNULEE', 'ECHEC']
 
-export default function Commandes() {
-  const [commandes, setCommandes] = useState([])
-  const [count, setCount] = useState(0)
-  const [page, setPage] = useState(1)
-  const [statut, setStatut] = useState('')
-  const [canal, setCanal] = useState('')
-  const [recherche, setRecherche] = useState('')
+export default function CommandeDetail() {
+  const { id } = useParams()
+  const navigate = useNavigate()
+  const [commande, setCommande] = useState(null)
+  const [historique, setHistorique] = useState([])
   const [chargement, setChargement] = useState(true)
+  const [erreurChargement, setErreurChargement] = useState('')
+  const [actionEnCours, setActionEnCours] = useState(false)
+  const [erreur, setErreur] = useState('')
 
-  useEffect(() => {
+  function charger() {
     setChargement(true)
-    const params = { page, ordering: '-created_at' }
-    if (statut) params.statut = statut
-    if (canal) params.canal = canal
-    if (recherche) params.search = recherche
-
-    listerCommandes(params)
-      .then((res) => {
-        const data = res.data
-        setCommandes(data.results || data)
-        setCount(data.count ?? (data.results || data).length)
+    setErreurChargement('')
+    Promise.all([getCommande(id), getHistoriqueCommande(id)])
+      .then(([c, h]) => {
+        setCommande(c.data)
+        setHistorique(h.data.results || h.data)
+      })
+      .catch((err) => {
+        if (err.response?.status === 404) {
+          setErreurChargement("Cette commande est introuvable. Elle a peut-être été supprimée.")
+        } else if (err.response?.status === 401) {
+          setErreurChargement("Votre session a expiré. Reconnectez-vous.")
+        } else {
+          setErreurChargement("Impossible de charger cette commande. Vérifiez votre connexion et réessayez.")
+        }
       })
       .finally(() => setChargement(false))
-  }, [page, statut, canal, recherche])
+  }
 
-  const totalPages = Math.max(1, Math.ceil(count / PAR_PAGE))
+  useEffect(charger, [id])
+
+  async function lancerAction(fn) {
+    setErreur('')
+    setActionEnCours(true)
+    try {
+      await fn()
+      charger()
+    } catch (err) {
+      setErreur(err.response?.data?.erreur || 'Une erreur est survenue.')
+    } finally {
+      setActionEnCours(false)
+    }
+  }
+
+  if (chargement) return <div className="h-96 flex items-center justify-center"><Spinner /></div>
+
+  if (erreurChargement) {
+    return (
+      <div className="text-center py-16">
+        <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-slate-500 mb-6 hover:text-slate-800 mx-auto w-fit">
+          <ArrowLeft size={16} /> Retour
+        </button>
+        <p className="text-slate-600 mb-4">{erreurChargement}</p>
+        <div className="flex items-center justify-center gap-3">
+          <button onClick={charger} className="gradient-brand text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-md">
+            Réessayer
+          </button>
+          <Link to="/dashboard/commandes" className="text-sm text-slate-500 px-4 py-2.5">
+            Retour à la liste
+          </Link>
+        </div>
+      </div>
+    )
+  }
+
+  if (!commande) return <p className="text-slate-500">Commande introuvable.</p>
+
+  const lignes = commande.lignes || []
 
   return (
     <div>
-      <Topbar title="Toutes les commandes" sousTitre="Lomé, Togo" />
+      <button onClick={() => navigate(-1)} className="flex items-center gap-1 text-sm text-slate-500 mb-4 hover:text-slate-800">
+        <ArrowLeft size={16} /> Retour
+      </button>
 
-      <div className="flex flex-wrap items-center gap-3 mb-4">
-        <input
-          value={recherche}
-          onChange={(e) => { setPage(1); setRecherche(e.target.value) }}
-          placeholder="Nom, téléphone, numéro..."
-          className="px-4 py-2 rounded-xl border border-slate-200 text-sm w-full sm:w-64 focus:outline-none focus:ring-2 focus:ring-brand-blue"
-        />
-        <select value={statut} onChange={(e) => { setPage(1); setStatut(e.target.value) }} className="px-3 py-2 rounded-xl border border-slate-200 text-sm">
-          <option value="">Tous les statuts</option>
-          {STATUTS.map((s) => <option key={s} value={s}>{STATUT_COMMANDE[s].label}</option>)}
-        </select>
-        <select value={canal} onChange={(e) => { setPage(1); setCanal(e.target.value) }} className="px-3 py-2 rounded-xl border border-slate-200 text-sm">
-          <option value="">Tous les canaux</option>
-          {CANAUX.map((c) => <option key={c} value={c}>{CANAL_CONFIG[c].label}</option>)}
-        </select>
+      <div className="flex items-center gap-3 mb-1 flex-wrap">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Commande {commande.numero}</h1>
+        <Badge config={CANAL_CONFIG[commande.canal]} />
+        <Badge config={STATUT_COMMANDE[commande.statut]} />
       </div>
+      <p className="text-sm text-slate-500 mb-6">Créée le {formaterDate(commande.created_at)}</p>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
-        {chargement ? (
-          <div className="p-10 flex justify-center"><Spinner /></div>
-        ) : commandes.length === 0 ? (
-          <p className="p-10 text-center text-slate-400 text-sm">Aucune commande ne correspond à ces filtres.</p>
-        ) : (
-          <>
-            {/* Cartes empilées, mobile uniquement */}
-            <div className="sm:hidden divide-y divide-slate-50">
-              {commandes.map((c) => (
-                <Link key={c.id} to={`/dashboard/commandes/${c.id}`} className="block p-4 active:bg-slate-50">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-slate-800">{c.numero}</span>
-                    <Badge config={STATUT_COMMANDE[c.statut]} />
-                  </div>
-                  <p className="text-sm text-slate-600">{c.client?.nom || c.client_nom}</p>
-                  <div className="flex items-center justify-between mt-2 text-sm">
-                    <Badge config={CANAL_CONFIG[c.canal]} />
-                    <span className="font-semibold text-slate-800">{formaterFCFA(c.montant_total)}</span>
-                  </div>
-                  <p className="text-xs text-slate-400 mt-1">{formaterDate(c.created_at)}</p>
-                </Link>
-              ))}
-            </div>
+      {erreur && <p className="text-sm text-red-600 mb-4">{erreur}</p>}
 
-            {/* Tableau, à partir de sm */}
-            <div className="hidden sm:block overflow-x-auto">
-              <table className="w-full text-sm min-w-[720px]">
-                <thead>
-                  <tr className="text-left text-slate-400 border-b border-slate-100">
-                    <th className="font-medium px-5 py-3">Numéro</th>
-                    <th className="font-medium px-5 py-3">Client</th>
-                    <th className="font-medium px-5 py-3">Canal</th>
-                    <th className="font-medium px-5 py-3">Montant</th>
-                    <th className="font-medium px-5 py-3">Statut</th>
-                    <th className="font-medium px-5 py-3">Date</th>
-                    <th className="font-medium px-5 py-3"></th>
-                  </tr>
-                </thead>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            <p className="font-semibold text-slate-900 mb-3">Client</p>
+            <p className="text-sm text-slate-800 font-medium">{commande.client?.nom}</p>
+            <p className="text-sm text-slate-500">{commande.client?.telephone}</p>
+          </div>
+
+          <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
+            <p className="font-semibold text-slate-900 mb-3">Articles commandés</p>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
                 <tbody>
-                  {commandes.map((c) => (
-                    <tr key={c.id} className="border-t border-slate-50 hover:bg-slate-50">
-                      <td className="px-5 py-3 font-medium text-slate-800">{c.numero}</td>
-                      <td className="px-5 py-3 text-slate-600">{c.client?.nom || c.client_nom}</td>
-                      <td className="px-5 py-3"><Badge config={CANAL_CONFIG[c.canal]} /></td>
-                      <td className="px-5 py-3 text-slate-800">{formaterFCFA(c.montant_total)}</td>
-                      <td className="px-5 py-3"><Badge config={STATUT_COMMANDE[c.statut]} /></td>
-                      <td className="px-5 py-3 text-slate-500">{formaterDate(c.created_at)}</td>
-                      <td className="px-5 py-3 text-right">
-                        <Link to={`/dashboard/commandes/${c.id}`} className="text-brand-blue font-medium">Détails</Link>
-                      </td>
+                  {lignes.map((l) => (
+                    <tr key={l.id} className="border-t border-slate-50">
+                      <td className="py-2 text-slate-700">{l.quantite}x {l.produit}</td>
+                      <td className="py-2 text-right text-slate-800">{formaterFCFA(l.quantite * l.prix_unitaire)}</td>
                     </tr>
                   ))}
+                  <tr className="border-t border-slate-100">
+                    <td className="py-2 text-slate-500">Frais additionnels</td>
+                    <td className="py-2 text-right text-slate-500">{formaterFCFA(commande.frais_livraison)}</td>
+                  </tr>
                 </tbody>
               </table>
             </div>
-          </>
-        )}
-      </div>
+            <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-100">
+              <p className="font-semibold text-slate-900">Montant total</p>
+              <p className="text-xl font-bold text-brand-blue">{formaterFCFA(commande.montant_total)}</p>
+            </div>
+          </div>
 
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <button disabled={page <= 1} onClick={() => setPage((p) => p - 1)} className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm disabled:opacity-40">Précédent</button>
-          <span className="text-sm text-slate-500">Page {page} / {totalPages}</span>
-          <button disabled={page >= totalPages} onClick={() => setPage((p) => p + 1)} className="px-3 py-1.5 rounded-lg border border-slate-200 text-sm disabled:opacity-40">Suivant</button>
+          <div className="flex flex-wrap gap-3">
+            {commande.statut === 'NOUVELLE' && (
+              <button disabled={actionEnCours} onClick={() => lancerAction(() => validerCommande(id))} className="gradient-brand text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-md disabled:opacity-60">
+                Valider la commande
+              </button>
+            )}
+            {commande.statut === 'VALIDEE' && (
+              <button disabled={actionEnCours} onClick={() => lancerAction(() => marquerLivree(id))} className="gradient-brand text-white text-sm font-medium px-4 py-2.5 rounded-xl shadow-md disabled:opacity-60">
+                Marquer comme livrée
+              </button>
+            )}
+            {!STATUTS_TERMINAUX.includes(commande.statut) && (
+              <button disabled={actionEnCours} onClick={() => lancerAction(() => annulerCommande(id))} className="border border-red-200 text-red-600 text-sm font-medium px-4 py-2.5 rounded-xl hover:bg-red-50 disabled:opacity-60">
+                Annuler la commande
+              </button>
+            )}
+          </div>
         </div>
-      )}
+
+        <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 h-fit">
+          <p className="font-semibold text-slate-900 mb-4">Historique</p>
+          <div className="space-y-4">
+            {historique.map((h, i) => (
+              <div key={h.id || i} className="flex gap-3">
+                <div className="flex flex-col items-center">
+                  <div className="w-2.5 h-2.5 rounded-full gradient-brand mt-1.5" />
+                  {i < historique.length - 1 && <div className="w-px flex-1 bg-slate-200" />}
+                </div>
+                <div className="pb-4">
+                  <p className="text-sm font-medium text-slate-800">{STATUT_COMMANDE[h.statut]?.label || h.statut}</p>
+                  {h.commentaire && <p className="text-xs text-slate-500">{h.commentaire}</p>}
+                  <p className="text-xs text-slate-400 mt-0.5">{formaterDate(h.created_at)}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
