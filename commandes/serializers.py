@@ -26,12 +26,12 @@ class HistoriqueCommandeSerializer(serializers.ModelSerializer):
 
 class CommandeListSerializer(serializers.ModelSerializer):
     client_nom = serializers.CharField(source="client.nom", read_only=True)
+    client_telephone = serializers.CharField(source="client.telephone", read_only=True)
     montant_total = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
 
     class Meta:
         model = Commande
-        fields = ("id", "numero", "client_nom", "canal", "statut", "mode_paiement", "montant_total", "created_at", "updated_at")
-
+        fields = ("id", "numero", "client_nom", "client_telephone", "canal", "statut", "mode_paiement", "montant_total", "created_at", "updated_at")
 
 class CommandeDetailSerializer(serializers.ModelSerializer):
     adresse = AdresseDigitaleSerializer(read_only=True)
