@@ -43,8 +43,6 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label="Commandes du jour" value={stats?.commandes_du_jour ?? 0} />
         <StatCard label="En attente traitement" value={stats?.en_attente_traitement ?? 0} hintColor="text-amber-600" hint="À traiter" />
-        <StatCard label="En cours de livraison" value={stats?.en_cours_livraison ?? 0} hintColor="text-purple-600" hint="En dispatch" />
-        <StatCard label="Livrées avec succès" value={stats?.livrees_avec_succes ?? 0} hintColor="text-emerald-600" hint="100% satisfaction" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
