@@ -106,7 +106,7 @@ export default function Parametres() {
                   <button
                     onClick={() => (connecte ? deconnecter(canal.id) : connecter(type))}
                     className={`text-xs font-medium px-3 py-1.5 rounded-lg ${connecte ? 'border border-red-200 text-red-600' : 'gradient-brand text-white'}`}
-                    disabled={enregistrement}
+                    disabled
                   >
                     {connecte ? 'Déconnecter' : 'Connecter'}
                   </button>
