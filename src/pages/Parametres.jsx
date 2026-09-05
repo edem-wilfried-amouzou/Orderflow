@@ -7,8 +7,8 @@ import { MessageCircle, MessageSquare, Camera } from 'lucide-react'
 
 const TYPES_CANAUX = [
   { type: 'WHATSAPP', label: 'WhatsApp', desc: 'Prise de commande par chat', icon: MessageCircle },
-  { type: 'FACEBOOK', label: 'Facebook Messenger', desc: 'Réponses automatiques sur votre Page', icon: MessageSquare },
-  { type: 'INSTAGRAM', label: 'Instagram', desc: 'Réponses automatiques sur votre compte pro', icon: Camera },
+  // { type: 'FACEBOOK', label: 'Facebook Messenger', desc: 'Réponses automatiques sur votre Page', icon: MessageSquare },
+  // { type: 'INSTAGRAM', label: 'Instagram', desc: 'Réponses automatiques sur votre compte pro', icon: Camera },
 ]
 
 export default function Parametres() {
@@ -64,7 +64,7 @@ export default function Parametres() {
     <div>
       <Topbar title="Paramètres" sousTitre="Gestion boutique" />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-4xl">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-full">
         <form onSubmit={enregistrer} className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 space-y-4 h-fit">
           <p className="font-semibold text-slate-900">Profil boutique</p>
           <div>
@@ -106,6 +106,7 @@ export default function Parametres() {
                   <button
                     onClick={() => (connecte ? deconnecter(canal.id) : connecter(type))}
                     className={`text-xs font-medium px-3 py-1.5 rounded-lg ${connecte ? 'border border-red-200 text-red-600' : 'gradient-brand text-white'}`}
+                    disabled={enregistrement}
                   >
                     {connecte ? 'Déconnecter' : 'Connecter'}
                   </button>
