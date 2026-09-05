@@ -34,8 +34,8 @@ export default function Register() {
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
-        <div className="flex justify-center mb-4">
-          <img src="/logo.png" alt="OrderFlow" className="h-8 w-auto" />
+        <div className="flex justify-center mb-5">
+          <img src="/logo.png" alt="OrderFlow" className="h-11 w-auto" />
         </div>
         <h1 className="text-xl font-bold text-slate-900 text-center mb-1">Créer un compte commerçant</h1>
         <p className="text-sm text-slate-500 text-center mb-6">Rejoignez OrderFlow à Lomé</p>

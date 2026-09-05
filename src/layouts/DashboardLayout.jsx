@@ -10,16 +10,20 @@ export default function DashboardLayout() {
     <div className="flex bg-slate-50 min-h-screen">
       <Sidebar ouvert={menuOuvert} onFermer={() => setMenuOuvert(false)} />
 
-      <div className="flex-1 min-w-0">
-        {/* Barre visible uniquement sur mobile/tablette (lg:hidden) : logo + bouton menu.
-            Sur desktop, la Sidebar fixe suffit, donc cette barre disparaît. */}
+      <div className="flex-1 min-w-0 w-full">
+        {/* Barre mobile/tablette : logo + bouton menu. Disparaît à partir de lg (sidebar fixe visible). */}
         <div className="lg:hidden sticky top-0 z-30 bg-white border-b border-slate-100 px-4 py-3 flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <img src="/logo.png" alt="OrderFlow" className="h-6 w-auto" />
-          </div>
+          <button
+            onClick={() => setMenuOuvert(true)}
+            className="text-slate-600 p-1 -ml-1 active:bg-slate-100 rounded-lg"
+            aria-label="Ouvrir le menu"
+          >
+            <Menu size={24} />
+          </button>
+          <img src="/logo.png" alt="OrderFlow" className="h-8 w-auto" />
         </div>
 
-        <main className="p-4 sm:p-6 lg:p-8 max-w-[1400px] mx-auto">
+        <main className="px-4 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 max-w-[1800px] mx-auto">
           <Outlet />
         </main>
       </div>

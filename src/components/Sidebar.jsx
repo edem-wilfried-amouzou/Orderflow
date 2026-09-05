@@ -21,14 +21,14 @@ export default function Sidebar({ ouvert, onFermer }) {
       )}
 
       <aside
-        className={`fixed lg:sticky top-0 left-0 z-50 w-64 bg-night-900 text-slate-300 flex flex-col h-screen
+        className={`fixed lg:sticky top-0 left-0 z-50 w-72 sm:w-64 bg-night-900 text-slate-300 flex flex-col h-screen
           transition-transform duration-200 ease-in-out
           ${ouvert ? 'translate-x-0' : '-translate-x-full'} lg:translate-x-0`}
       >
-        <div className="px-6 py-6 flex items-center justify-between">
-          <img src="/logo.png" alt="OrderFlow" className="h-7 w-auto" />
-          <button onClick={onFermer} className="lg:hidden text-slate-400 hover:text-white">
-            <X size={20} />
+        <div className="px-6 py-6 flex items-center justify-between shrink-0">
+          <img src="/logo.png" alt="OrderFlow" className="h-9 w-auto" />
+          <button onClick={onFermer} className="lg:hidden text-slate-400 hover:text-white p-1">
+            <X size={22} />
           </button>
         </div>
 
@@ -51,7 +51,7 @@ export default function Sidebar({ ouvert, onFermer }) {
           ))}
         </nav>
 
-        <div className="p-4 border-t border-night-700">
+        <div className="p-4 border-t border-night-700 shrink-0">
           <div className="flex items-center gap-3 mb-3">
             <div className="w-9 h-9 rounded-full bg-night-700 flex items-center justify-center text-white text-sm font-semibold shrink-0">
               {user?.commercant?.nom_boutique?.[0]?.toUpperCase() || 'C'}

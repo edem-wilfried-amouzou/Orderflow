@@ -60,16 +60,16 @@ export default function Notifications() {
     <div>
       <Topbar title="Notifications" sousTitre="Flux en direct" />
 
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex bg-slate-100 rounded-xl p-1">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+        <div className="flex bg-slate-100 rounded-xl p-1 overflow-x-auto max-w-full">
           {ONGLETS.map((o) => (
             <button key={o.id} onClick={() => setOnglet(o.id)}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition ${onglet === o.id ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}>
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition whitespace-nowrap ${onglet === o.id ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}>
               {o.label}
             </button>
           ))}
         </div>
-        <button onClick={toutMarquerLu} className="text-sm font-medium text-slate-600 border border-slate-200 rounded-xl px-4 py-2 hover:bg-slate-50">
+        <button onClick={toutMarquerLu} className="text-sm font-medium text-slate-600 border border-slate-200 rounded-xl px-4 py-2 hover:bg-slate-50 self-start sm:self-auto">
           Marquer tout comme lu
         </button>
       </div>

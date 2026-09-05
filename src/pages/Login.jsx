@@ -28,7 +28,7 @@ export default function Login() {
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8">
         <div className="flex flex-col items-center mb-6">
-          <img src="/logo.png" alt="OrderFlow" className="h-10 w-auto mb-3" />
+          <img src="/logo.png" alt="OrderFlow" className="h-14 w-auto mb-4" />
           <h1 className="text-xl font-bold text-slate-900">Connexion Marchand</h1>
           <p className="text-sm text-slate-500">Gérez vos commandes à Lomé</p>
         </div>

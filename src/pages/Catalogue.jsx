@@ -71,35 +71,57 @@ export default function Catalogue() {
         ) : produits.length === 0 ? (
           <p className="p-10 text-center text-slate-400 text-sm">Aucun produit pour l'instant.</p>
         ) : (
-          <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[560px]">
-            <thead>
-              <tr className="text-left text-slate-400 border-b border-slate-100">
-                <th className="font-medium px-5 py-3">Produit</th>
-                <th className="font-medium px-5 py-3">Prix</th>
-                <th className="font-medium px-5 py-3">Statut</th>
-                <th className="font-medium px-5 py-3"></th>
-              </tr>
-            </thead>
-            <tbody>
+          <>
+            {/* Cartes empilées, mobile uniquement */}
+            <div className="sm:hidden divide-y divide-slate-50">
               {produits.map((p) => (
-                <tr key={p.id} className="border-t border-slate-50">
-                  <td className="px-5 py-3 font-medium text-slate-800">{p.nom}</td>
-                  <td className="px-5 py-3 text-slate-600">{formaterFCFA(p.prix)}</td>
-                  <td className="px-5 py-3">
-                    <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${p.actif ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                <div key={p.id} className="p-4 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-800 truncate">{p.nom}</p>
+                    <p className="text-sm text-slate-600">{formaterFCFA(p.prix)}</p>
+                    <span className={`inline-block mt-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${p.actif ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
                       {p.actif ? 'Actif' : 'Inactif'}
                     </span>
-                  </td>
-                  <td className="px-5 py-3 text-right space-x-3">
-                    <button onClick={() => setForm(p)} className="text-slate-400 hover:text-brand-blue"><Pencil size={16} /></button>
-                    <button onClick={() => supprimer(p.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={16} /></button>
-                  </td>
-                </tr>
+                  </div>
+                  <div className="flex items-center gap-3 shrink-0">
+                    <button onClick={() => setForm(p)} className="text-slate-400 hover:text-brand-blue p-1"><Pencil size={18} /></button>
+                    <button onClick={() => supprimer(p.id)} className="text-slate-400 hover:text-red-500 p-1"><Trash2 size={18} /></button>
+                  </div>
+                </div>
               ))}
-            </tbody>
-          </table>
-          </div>
+            </div>
+
+            {/* Tableau, à partir de sm */}
+            <div className="hidden sm:block overflow-x-auto">
+              <table className="w-full text-sm min-w-[560px]">
+                <thead>
+                  <tr className="text-left text-slate-400 border-b border-slate-100">
+                    <th className="font-medium px-5 py-3">Produit</th>
+                    <th className="font-medium px-5 py-3">Prix</th>
+                    <th className="font-medium px-5 py-3">Statut</th>
+                    <th className="font-medium px-5 py-3"></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {produits.map((p) => (
+                    <tr key={p.id} className="border-t border-slate-50">
+                      <td className="px-5 py-3 font-medium text-slate-800">{p.nom}</td>
+                      <td className="px-5 py-3 text-slate-600">{formaterFCFA(p.prix)}</td>
+                      <td className="px-5 py-3">
+                        <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${p.actif ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'}`}>
+                          {p.actif ? 'Actif' : 'Inactif'}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3 text-right space-x-3">
+                        <button onClick={() => setForm(p)} className="text-slate-400 hover:text-brand-blue"><Pencil size={16} /></button>
+                        <button onClick={() => supprimer(p.id)} className="text-slate-400 hover:text-red-500"><Trash2 size={16} /></button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
