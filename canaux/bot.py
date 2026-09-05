@@ -114,12 +114,17 @@ def _texte_panier(conversation):
     return f"Votre panier :\n{lignes}\n\nTotal : {total} FCFA\n\nTapez 'confirmer' pour valider la commande, ou 0 pour revenir au menu."
 
 
+def _nom_est_reel(client):
+    """Écarte les anciens clients créés automatiquement avec un nom placeholder
+    (ex. 'Client WhatsApp') par une version antérieure du bot, avant l'ajout des
+    étapes nom/contact — sans ça, ces clients-là ne seraient jamais redemandés."""
+    return bool(client and client.nom and not client.nom.startswith("Client "))
+
+
 # --- États : identification du client (nom + contact, jamais d'adresse) ---
 
 def gerer_debut(conversation, texte):
-    # Client déjà identifié (nom + contact renseignés lors d'une commande précédente sur ce numéro) :
-    # on ne redemande rien, on va direct au menu.
-    if conversation.client and conversation.client.nom:
+    if _nom_est_reel(conversation.client):
         envoyer_message(conversation, f"Ravi de vous revoir {conversation.client.nom} !\n\n{_texte_menu()}")
         conversation.etat = Conversation.Etat.MENU
         conversation.save()
